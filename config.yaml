@@ -1,0 +1,39 @@
+dataset_path: "/projects/weilab/dataset/barcode/validation"
+output_path: "outputs"
+anisotropy: [40, 16, 16]
+
+
+fiber_segmentation:
+  num_gpus: 4
+  num_cpus: 48
+  batch_size: 64
+
+  checkpoint: /home/linok/skel3d/outputs/checkpoints/01-tiled_clahe/checkpoint_100000.pth.tar
+  base_yaml: /home/linok/skel3d/configs/01-tiled_clahe.yaml
+  bcs_yaml: /home/linok/skel3d/configs/bcs.yaml
+
+  clahe:
+    tile_size: 8
+    clip_limit: 2.0
+
+  bcs:
+    thres1: 0.21290304093127832
+    thres2: 0.6229526243971144
+    thres3: 0
+    thres4: 0
+    thres5: 0
+    thres_small: 10
+
+cell_segmentation:
+  model_type: "vit_b_lm" # base (also t for tiny; l for large), light microscopy
+  visualize: true
+
+precomputed:
+  jobs: 64
+  chunk_size: [16, 64, 64]
+  downsample_factors:
+    - [1, 2, 2]
+    - [2, 2, 2]
+    - [2, 2, 2]
+  mesh_mip: 0
+  mesh_merge_magnitude: 3
