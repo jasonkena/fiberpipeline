@@ -30,8 +30,8 @@ cell_segmentation:
   visualize: true
 
 skeletonize_fibers:
-  scale: 1.5
-  const: 100000
+  num_centerline_points: 1000
+  spline_smoothing: null
 
 precomputed:
   jobs: 64
