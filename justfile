@@ -10,10 +10,17 @@ cell_segmentation:
 fiber_skeleton:
     python skeletonize_fibers.py --config=config.yaml
 
+extract_signals:
+    python extract_signals.py --config=config.yaml
+
 plot:
     python plot.py --config=config.yaml
+
+plot_signals:
+    python plot_signals.py --config=config.yaml
 
 everything:
     just fiber_segmentation
     just cell_segmentation
     just fiber_skeleton
+    just extract_signals

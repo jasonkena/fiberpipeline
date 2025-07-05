@@ -6,7 +6,6 @@ import glob
 from nicety.conf import get_conf, dotdict_to_dict
 from tqdm import tqdm
 
-# import napari
 from utils import preprocess_vol
 import cv2
 from joblib import Parallel, delayed
