@@ -90,7 +90,7 @@ def generate_affinities(conf):
             # C, Z, Y, X
             img = preprocess_vol(imageio.volread(file))
             img = clahe_parallel(
-                img[0],
+                img[1],  # fiber channel
                 tile_size=fiber_conf.clahe.tile_size,
                 clip_limit=fiber_conf.clahe.clip_limit,
             )  # Apply CLAHE to the first channel

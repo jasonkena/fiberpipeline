@@ -4,6 +4,7 @@ import numpy as np
 from typing import List, Tuple
 
 from tqdm import tqdm
+import cloudvolume
 from cloudvolume import CloudVolume
 from joblib import Parallel, delayed
 import igneous.task_creation as tc
@@ -22,6 +23,7 @@ def to_precomputed(
     downsample_factors: List[List[int]] = [],
     mesh_mip: int = 0,
     mesh_merge_magnitude: int = 3,
+    enable_skeletons: bool = False,
     n_jobs: int = -1,
 ):
     """
@@ -39,10 +41,22 @@ def to_precomputed(
         in same order as chunk_size, e.g. [1, 1, 1] for isotropic
     chunk_size
         size of chunks to write to disk
+    downsample_factors
+        list of downsample factors for each mip level, e.g. [[1, 1, 1], [2, 2, 2]]
+    mesh_mip
+        mip level to create mesh for segmentation layer
+    mesh_merge_magnitude
+        magnitude for merging meshes, only used if layer_type is "segmentation"
+    enable_skeletons
+        whether to enable skeletons for segmentation layer, if True, will need to be populated after with write_skeletons() or by using igneous skeletonize
     n_jobs
         number of parallel jobs to use for writing chunks
     """
-    cv = initialize_cloudvolume(vol, output_layer, layer_type, anisotropy, chunk_size)
+    if enable_skeletons:
+        assert layer_type == "segmentation"
+    cv = initialize_cloudvolume(
+        vol, output_layer, layer_type, anisotropy, chunk_size, enable_skeletons
+    )
     write_cloudvolume(output_layer, vol, chunk_size, n_jobs)
     downsample_cloudvolume(
         output_layer,
@@ -68,6 +82,7 @@ def initialize_cloudvolume(
     layer_type: str,
     anisotropy: List[float],
     chunk_size: List[int],
+    enable_skeletons: bool = False,
 ):
     """
     generates a cloudvolume precomputed layer from a numpy-like array in [C, Z, Y, X] or [Z, Y, X] format
@@ -84,6 +99,10 @@ def initialize_cloudvolume(
         in same order as chunk_size, e.g. [1, 1, 1] for isotropic
     chunk_size
     """
+    if enable_skeletons:
+        assert (
+            layer_type == "segmentation"
+        ), "Skeletons can only be enabled for segmentation layers"
     assert layer_type in [
         "image",
         "segmentation",
@@ -121,8 +140,8 @@ def initialize_cloudvolume(
     }
     if layer_type == "segmentation":
         kwargs["mesh"] = "mesh"
-        print("Not implementing skeletons")
-        # kwargs["skeletons"] = "skeletons"
+        if enable_skeletons:
+            kwargs["skeletons"] = "skeletons"
 
     info = CloudVolume.create_new_info(**kwargs)
 
@@ -235,10 +254,8 @@ def mesh_cloudvolume(
     tq.insert(tasks)
     tq.execute()
 
-def populate_segment_properties(
-    output_layer: str,
-    label: str = "label"
-):
+
+def populate_segment_properties(output_layer: str, label: str = "label"):
     # NOTE: still unsure how to load this info file
     cv = CloudVolume(f"file://{output_layer}")
     unique = cv.image.unique(cv.bounds, cv.mip)
@@ -255,8 +272,8 @@ def populate_segment_properties(
                     "type": "label",
                     "values": [label] * len(unique),
                 }
-            ]
-        }
+            ],
+        },
     }
 
     path = os.path.join(output_layer, "segment_properties", "info")
@@ -264,3 +281,32 @@ def populate_segment_properties(
     # save as json
     with open(path, "w") as f:
         json.dump(neuroglancer_data, f, indent=4)
+
+
+def write_skeletons(output_layer: str, skels: List[cloudvolume.Skeleton]):
+    """
+    Writes skeletons to the cloudvolume layer.
+    """
+    cv = CloudVolume(f"file://{output_layer}")
+    # https://github.com/seung-lab/cloud-volume/issues/540#issue-1233130338
+    # NG does not support uint8
+    for skel in skels:
+        skel.extra_attributes = [
+            attr for attr in skel.extra_attributes if attr["data_type"] != "uint8"
+        ]
+    cv.skeleton.upload(skels)
+    cv.skeleton.meta.commit_info()
+
+    info_path = os.path.join(output_layer, "skeletons", "info")
+    assert os.path.exists(info_path), f"Skeleton info file does not exist: {info_path}"
+    with open(info_path, "r") as f:
+        info = json.load(f)
+    # https://github.com/seung-lab/cloud-volume/blob/ed2cba49ae15333bf602ba8b359cfd55de1bba98/cloudvolume/datasource/precomputed/skeleton/metadata.py#L117
+    assert "vertex_attributes" in info, "Vertex attributes not found in skeleton info"
+
+    info["vertex_attributes"] = [
+        attr for attr in info["vertex_attributes"] if attr.get("data_type") != "uint8"
+    ]
+
+    with open(info_path, "w") as f:
+        json.dump(info, f, indent=4)

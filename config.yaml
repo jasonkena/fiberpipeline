@@ -24,9 +24,14 @@ fiber_segmentation:
     thres5: 0
     thres_small: 10
 
+
 cell_segmentation:
   model_type: "vit_b_lm" # base (also t for tiny; l for large), light microscopy
   visualize: true
+
+skeletonize_fibers:
+  scale: 1.5
+  const: 100000
 
 precomputed:
   jobs: 64

@@ -1,20 +1,19 @@
 import glob
 import os
-import zarr
 import numpy as np
 import neuroglancer
 import imageio
 import h5py
-from typing import Optional
 from pick import pick
 from nicety.conf import get_conf, DotDict
 from utils import preprocess_vol
-from precomputed import to_precomputed
+from precomputed import to_precomputed, write_skeletons
 import tempfile
-from typing import List, Dict
+from typing import Dict
 from cloudvolume import CloudVolume
 import socketserver
 import threading
+from urllib.parse import urlparse
 
 
 def get_free_port(ip: str) -> int:
@@ -56,7 +55,6 @@ def plot(
 
     threads = serve_cloudvolume_layers(ip, layers)
     ports = [threads[name].port for name in layers.keys()]
-    print(f"Serving layers on ports: {ports}")
 
     with viewer.txn() as s:
         for name in layers.keys():
@@ -81,6 +79,10 @@ def plot(
                 )
 
     print(viewer)
+    ports.append(urlparse(str(viewer)).port)
+    ports = " ".join(map(str, ports))
+    print(f"Ports: {ports}")
+
     return viewer
 
 
@@ -106,6 +108,11 @@ if __name__ == "__main__":
     ), "Expected only one key in the fiber segmentation file"
     fiber_seg = fiber_seg[list(fiber_seg.keys())[0]][:]
 
+    fiber_skels = np.load(
+        os.path.join(conf.output_path, files[index].replace(".tif", "_fiber_skel.npz")),
+        allow_pickle=True,
+    )["skels"].tolist()
+
     cell_seg = h5py.File(
         os.path.join(conf.output_path, files[index].replace(".tif", "_cell_seg.h5")),
     )
@@ -126,32 +133,37 @@ if __name__ == "__main__":
             chunk_size=conf.precomputed.chunk_size,
             downsample_factors=conf.precomputed.downsample_factors,
             n_jobs=conf.precomputed.jobs,
+            enable_skeletons=True,
+        )
+        write_skeletons(
+            os.path.join(tmpdir, "fiber_seg"),
+            fiber_skels,
         )
         layers["fiber_seg"] = cv
 
-        cv = to_precomputed(
-            cell_seg,
-            os.path.join(tmpdir, "cell_seg"),
-            layer_type="segmentation",
-            anisotropy=conf.anisotropy,
-            chunk_size=conf.precomputed.chunk_size,
-            downsample_factors=conf.precomputed.downsample_factors,
-            n_jobs=conf.precomputed.jobs,
-        )
-        layers["cell_seg"] = cv
-
-        for c in range(im_vol.shape[0]):
-            output_layer = os.path.join(tmpdir, f"im_{c}")
-
-            cv = to_precomputed(
-                im_vol[c],
-                output_layer,
-                layer_type="image",
-                anisotropy=conf.anisotropy,
-                chunk_size=conf.precomputed.chunk_size,
-                n_jobs=conf.precomputed.jobs,
-            )
-            layers[f"im_{c}"] = cv
+        # cv = to_precomputed(
+        #     cell_seg,
+        #     os.path.join(tmpdir, "cell_seg"),
+        #     layer_type="segmentation",
+        #     anisotropy=conf.anisotropy,
+        #     chunk_size=conf.precomputed.chunk_size,
+        #     downsample_factors=conf.precomputed.downsample_factors,
+        #     n_jobs=conf.precomputed.jobs,
+        # )
+        # layers["cell_seg"] = cv
+        #
+        # for c in range(im_vol.shape[0]):
+        #     output_layer = os.path.join(tmpdir, f"im_{c}")
+        #
+        #     cv = to_precomputed(
+        #         im_vol[c],
+        #         output_layer,
+        #         layer_type="image",
+        #         anisotropy=conf.anisotropy,
+        #         chunk_size=conf.precomputed.chunk_size,
+        #         n_jobs=conf.precomputed.jobs,
+        #     )
+        #     layers[f"im_{c}"] = cv
 
         viewer = plot(layers)
-        breakpoint()
+        input("Press Enter to exit...")

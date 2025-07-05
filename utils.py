@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def preprocess_vol(vol):
     assert vol.ndim == 4, f"Expected 4D image, got {vol.ndim}D"
     assert vol.shape[1] == 4, f"Expected 4 channels, got {vol.shape[1]}"
