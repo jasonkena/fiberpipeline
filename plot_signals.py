@@ -6,11 +6,13 @@ import matplotlib.pyplot as plt
 from nicety.conf import get_conf
 
 
-def geodesic(skel, center: bool):
+def geodesic(skel, center: bool, offset=None):
     dist = np.cumsum(np.linalg.norm(np.diff(skel.vertices, axis=0), axis=1))
     dist = np.concatenate([[0], dist])
     if center:
         dist -= dist.mean()
+    if offset != None:
+        dist -= dist[offset]
     return dist
 
 
@@ -19,11 +21,11 @@ def plot_signals(conf):
     for file in files:
         print(f"Processing {file}")
         signals = np.load(file, allow_pickle=True)
-        signals, signal_labels = signals["signals"], signals["signal_labels"]
+        signals, signal_labels, midpoints = signals["signals"], signals["signal_labels"], signals["midpoints"]
         skels = np.load(
             file.replace("_signals.npz", "_fiber_skel.npz"), allow_pickle=True
         )["skels"].tolist()
-        geodesics = [geodesic(skel, center=True) for skel in skels]
+        geodesics = [geodesic(skel, center=True, offset=midpoint) for skel, midpoint in zip(skels, midpoints)]
 
         for i, signal_label in enumerate(signal_labels):
             if not "im" in signal_label:
