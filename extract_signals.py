@@ -10,7 +10,7 @@ import imageio
 from utils import preprocess_vol
 
 
-def extract_signals(vol, skels, anisotropy):
+def extract_signals(vol, skels, anisotropy, method: str):
     assert vol.ndim == 3, "Volume must be 3D"
     skel_lens = np.array([skel.vertices.shape[0] for skel in skels])
     # already in isotropic space
@@ -22,10 +22,11 @@ def extract_signals(vol, skels, anisotropy):
         points,
         vol,
         all_skel_vertices,
-        method="linear",
+        method=method,
         bounds_error=False,
-        fill_value=0.0,
+        fill_value=-1.0,
     )
+    assert np.all(signals >= 0), "Signals must be non-negative"
     # [ [signal for vertex in skel] for skel in skels ]
     signals = np.split(signals, np.cumsum(skel_lens)[:-1])
 
@@ -51,6 +52,7 @@ def generate_signals(conf):
                     im_vol[i],
                     skels,
                     conf.anisotropy,
+                    method="linear",
                 )
             )
         del im_vol
@@ -67,6 +69,7 @@ def generate_signals(conf):
                 fiber_seg,
                 skels,
                 conf.anisotropy,
+                method="nearest",
             )
         )
         signal_labels.append("fiber_seg")
@@ -84,6 +87,7 @@ def generate_signals(conf):
                 cell_seg,
                 skels,
                 conf.anisotropy,
+                method="nearest",
             )
         )
         signal_labels.append("cell_seg")
