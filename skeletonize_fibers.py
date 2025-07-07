@@ -1,6 +1,5 @@
 import os
 import glob
-import imageio
 import numpy as np
 import h5py
 from em_util.io.box import compute_bbox_all
@@ -11,14 +10,10 @@ from scipy.interpolate import splprep, splev, interp1d
 from sklearn.decomposition import PCA
 from cloudvolume import Skeleton
 from typing import Optional
-from utils import preprocess_vol
 
 
 def fit_cylinder_spline_pca(
-    points,
-    weights: None,
-    spline_smoothing: Optional[float] = None,
-    npoints_geodesic: int = 1000,
+    points, spline_smoothing: Optional[float] = None, npoints_geodesic: int = 1000
 ):
     """
     Fit a spline to a deformed cylindrical point cloud using PCA coordinate system.
@@ -28,7 +23,6 @@ def fit_cylinder_spline_pca(
     -----------
     points : array-like, shape (N, 3)
         Input point cloud coordinates
-    weights : by default np.ones(N)
     spline_smoothing : Optional[float]
         Smoothing parameter for spline fitting (0 = interpolation)
     npoints_geodesic : int
@@ -40,8 +34,6 @@ def fit_cylinder_spline_pca(
         Function to evaluate the fitted spline at given [0,1] arc length parameters
         total_length : float
     """
-    if weights is None:
-        weights = np.ones(points.shape[0])
 
     # Step 0: Normalize points to unit sphere to allow spline_smoothing to take sane values
     center = np.mean(points, axis=0)
@@ -135,57 +127,24 @@ def points_to_skeleton(points, segid: Optional[int] = None):
     return skel
 
 
-def softmax(x, temperature):
-    """
-    Compute softmax of an array with a given temperature.
-    """
-    e_x = np.exp(x / temperature)
-    return e_x / np.sum(e_x, axis=0, keepdims=True)
-
-
 def skeletonize_chunk(
-    vol,
-    c1_vol,
-    bbox_row,
-    spline_smoothing,
-    num_centerline_points,
-    extrapolate_percentage,
-    c1_softmax_temperature,
-    anisotropy,
+    vol, bbox_row, spline_smoothing, num_centerline_points, anisotropy
 ):
-    assert vol.shape == c1_vol.shape, "Volume and C1 volume must have the same shape"
     vol = vol[
-        bbox_row[1] : bbox_row[2] + 1,
-        bbox_row[3] : bbox_row[4] + 1,
-        bbox_row[5] : bbox_row[6] + 1,
-    ]
-    c1_vol = c1_vol[
         bbox_row[1] : bbox_row[2] + 1,
         bbox_row[3] : bbox_row[4] + 1,
         bbox_row[5] : bbox_row[6] + 1,
     ]
     # have it a binary volume with value bbox_row[0]
     vol = vol == bbox_row[0]
-    points = np.argwhere(vol)
-    c1_points = c1_vol[points[:, 0], points[:, 1], points[:, 2]]
-    c1_points = (c1_points - c1_points.mean()) / (
-        c1_points.std() + 1e-8
-    )  # normalize to zero mean and unit variance
-    c1_points = softmax(c1_points, c1_softmax_temperature)
-
-    points = points * np.array(anisotropy)
+    points = np.argwhere(vol) * np.array(anisotropy)
     assert len(points) > 0, "No points found in the volume"
 
     spline, total_length = fit_cylinder_spline_pca(
         points,
-        weights=c1_points,
         spline_smoothing=spline_smoothing,
     )
-    centerline = spline(
-        np.linspace(
-            -extrapolate_percentage, 1 + extrapolate_percentage, num_centerline_points
-        )
-    )
+    centerline = spline(np.linspace(0, 1, num_centerline_points))
     centerline[:, 0] += bbox_row[1] * anisotropy[0]
     centerline[:, 1] += bbox_row[3] * anisotropy[1]
     centerline[:, 2] += bbox_row[5] * anisotropy[2]
@@ -202,17 +161,6 @@ def generate_fiber_skeletons(conf, n_jobs=-1):
         seg = h5py.File(file, "r")
         assert len(seg.keys()) == 1, "Only one key expected in segmentation file"
         seg = seg[list(seg.keys())[0]][:]
-
-        c1_vol = preprocess_vol(
-            imageio.volread(
-                os.path.join(
-                    conf.dataset_path,
-                    os.path.basename(file).replace("_fiber_seg.h5", ".tif"),
-                )
-            )
-        )[1]
-        assert c1_vol.ndim == 3
-
         # [id, z_min, z_max, y_min, y_max, x_min, x_max]
         # need to do z_min :  z_max + 1 to index
         bbox = compute_bbox_all(seg)
@@ -222,12 +170,9 @@ def generate_fiber_skeletons(conf, n_jobs=-1):
                 Parallel(n_jobs=n_jobs, return_as="generator")(
                     delayed(skeletonize_chunk)(
                         seg,
-                        c1_vol,
                         bbox[i],
                         conf.skeletonize_fibers.spline_smoothing,
                         conf.skeletonize_fibers.num_centerline_points,
-                        conf.skeletonize_fibers.extrapolate_percentage,
-                        conf.skeletonize_fibers.c1_softmax_temperature,
                         conf.anisotropy,
                     )
                     for i in range(bbox.shape[0])
