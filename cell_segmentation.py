@@ -33,7 +33,7 @@ def main(conf):
 
         file = h5py.File(
             os.path.join(
-                conf.output_path, os.path.basename(file).replace(".tif", "_cell_seg.h5")
+                conf.output_path, os.path.basename(file).replace(".tif", "-cell_seg.h5")
             ),
             "w",
         )

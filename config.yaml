@@ -4,8 +4,8 @@ anisotropy: [40, 16, 16]
 
 
 fiber_segmentation:
-  num_gpus: 4
-  num_cpus: 48
+  num_gpus: 1
+  num_cpus: 16
   batch_size: 64
 
   checkpoint: /home/linok/skel3d/outputs/checkpoints/01-tiled_clahe/checkpoint_100000.pth.tar
@@ -30,7 +30,7 @@ cell_segmentation:
   visualize: true
 
 skeletonize_fibers:
-  num_cpus: 48
+  num_cpus: 16
   num_centerline_points: 1000
   spline_smoothing: null
 

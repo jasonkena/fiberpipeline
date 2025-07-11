@@ -155,7 +155,7 @@ def skeletonize_chunk(
 
 
 def generate_fiber_skeletons(conf, n_jobs=-1):
-    files = sorted(glob.glob(os.path.join(conf.output_path, "*fiber_seg.h5")))
+    files = sorted(glob.glob(os.path.join(conf.output_path, "*masked_fiber_seg.h5")))
 
     for file in tqdm(files, desc="Processing files"):
         seg = h5py.File(file, "r")
@@ -185,7 +185,7 @@ def generate_fiber_skeletons(conf, n_jobs=-1):
         np.savez(
             os.path.join(
                 conf.output_path,
-                os.path.basename(file).replace("fiber_seg.h5", "fiber_skel.npz"),
+                os.path.basename(file).replace("masked_fiber_seg.h5", "fiber_skel.npz"),
             ),
             skels=skels,
         )

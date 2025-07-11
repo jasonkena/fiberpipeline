@@ -101,7 +101,7 @@ if __name__ == "__main__":
         imageio.volread(os.path.join(conf.dataset_path, files[index]))
     )
     fiber_seg = h5py.File(
-        os.path.join(conf.output_path, files[index].replace(".tif", "_fiber_seg.h5")),
+        os.path.join(conf.output_path, files[index].replace(".tif", "-masked_fiber_seg.h5")),
     )
     assert (
         len(fiber_seg.keys()) == 1
@@ -109,12 +109,12 @@ if __name__ == "__main__":
     fiber_seg = fiber_seg[list(fiber_seg.keys())[0]][:]
 
     fiber_skels = np.load(
-        os.path.join(conf.output_path, files[index].replace(".tif", "_fiber_skel.npz")),
+        os.path.join(conf.output_path, files[index].replace(".tif", "-fiber_skel.npz")),
         allow_pickle=True,
     )["skels"].tolist()
 
     cell_seg = h5py.File(
-        os.path.join(conf.output_path, files[index].replace(".tif", "_cell_seg.h5")),
+        os.path.join(conf.output_path, files[index].replace(".tif", "-cell_seg.h5")),
     )
     assert (
         len(cell_seg.keys()) == 1

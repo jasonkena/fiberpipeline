@@ -24,7 +24,7 @@ def extract_signals(vol, skels, anisotropy):
         all_skel_vertices,
         method="linear",
         bounds_error=False,
-        fill_value=-1,
+        fill_value=0,
     )
     # [ [signal for vertex in skel] for skel in skels ]
     signals = np.split(signals, np.cumsum(skel_lens)[:-1])
@@ -35,7 +35,7 @@ def generate_signals(conf):
     files = sorted(glob.glob(os.path.join(conf.output_path, "*fiber_skel.npz")))
     for file in tqdm(files, desc="Processing files"):
         skels = np.load(file, allow_pickle=True)["skels"].tolist()
-        base_name = os.path.basename(file).replace("_fiber_skel.npz", "")
+        base_name = os.path.basename(file).replace("-fiber_skel.npz", "")
         signal_labels = []
         signals = []
 
@@ -54,7 +54,7 @@ def generate_signals(conf):
             )
         del im_vol
         fiber_seg = h5py.File(
-            os.path.join(conf.output_path, base_name + "_fiber_seg.h5"),
+            os.path.join(conf.output_path, base_name + "-masked_fiber_seg.h5"),
         )
         assert (
             len(fiber_seg.keys()) == 1
@@ -71,7 +71,7 @@ def generate_signals(conf):
         del fiber_seg
 
         cell_seg = h5py.File(
-            os.path.join(conf.output_path, base_name + "_cell_seg.h5"),
+            os.path.join(conf.output_path, base_name + "-cell_seg.h5"),
         )
         assert (
             len(cell_seg.keys()) == 1
@@ -90,7 +90,7 @@ def generate_signals(conf):
         np.savez(
             os.path.join(
                 conf.output_path,
-                base_name + "_signals.npz",
+                base_name + "-signals.npz",
             ),
             signals=signals,
             signal_labels=signal_labels,

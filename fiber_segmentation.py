@@ -114,7 +114,7 @@ def generate_affinities(conf):
                 os.path.join(tmpdir, "affinities.h5"),
                 os.path.join(
                     conf.output_path,
-                    os.path.basename(file).replace(".tif", "_fiber_aff.h5"),
+                    os.path.basename(file).replace(".tif", "-fiber_aff.h5"),
                 ),
             )
 

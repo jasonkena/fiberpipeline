@@ -45,7 +45,7 @@ def get_midpoint(signal):
 
 def normalize_signal(signal, midpoint):
     halves = signal[:midpoint], signal[midpoint:]
-    halves = list(map(lambda x: interp2d(x, len(signal)/2), halves))
+    halves = list(map(lambda x: interp2d(x, int(len(signal)/2)), halves))
     signal = np.concatenate([halves[0], halves[1]])
     I_baseline = signal[int(signal.shape[0]*0.45):int(signal.shape[0]*0.55)].mean()
     if I_baseline == 0:
@@ -57,21 +57,24 @@ def normalize_signals(signals):
     signal_midpoint = get_midpoint(signals[2])
     return list(map(lambda x: normalize_signal(x, signal_midpoint), signals))
 
-def geodesic(skel, center: bool, offset=None):
+def geodesic(skel, center=None):
     dist = np.cumsum(np.linalg.norm(np.diff(skel.vertices, axis=0), axis=1))
     dist = np.concatenate([[0], dist])
-    if center:
-        dist -= dist.mean()
-    if offset != None:
-        dist -= dist[offset]
+    if center != None:
+        for i in range(len(dist)):
+            if i <= center:
+                dist[i] = dist[i] * i/len(dist)
+            else:
+                dist[i] = dist[center] + (dist[-1] - dist[center]) * (i - center) / (len(dist)-1-center)
+        dist -= dist[center]
     return dist
 
-def normalize_signals(conf):
-    files = sorted(glob.glob(os.path.join(conf.output_path, "*_signals.npz")))
+def normalize_all_signals(conf):
+    files = sorted(glob.glob(os.path.join(conf.output_path, "*-signals.npz")))
     for file in files:
         print(f"Processing {file}")
         signals = np.load(file, allow_pickle=True)
-        base_name = os.path.basename(file).replace("_signals.npz", "")
+        base_name = os.path.basename(file).replace("-signals.npz", "")
         signals, signal_labels = signals["signals"], signals["signal_labels"]
         skels = np.load(
             file.replace("-signals.npz", "-fiber_skel.npz"), allow_pickle=True
@@ -84,17 +87,18 @@ def normalize_signals(conf):
         with Pool(conf.skeletonize_fibers.num_cpus) as p:
             signals = p.map(normalize_signals, signals)
         signals = np.moveaxis(signals, 1, 0)
-        geodesics = [geodesic(skel, center=True, offset=midpoint) for skel, midpoint in zip(skels, midpoints)]
+        geodesics = [geodesic(skel, center=midpoint) for skel, midpoint in zip(skels, midpoints)]
         
         np.savez(
             os.path.join(
                 conf.output_path,
-                base_name + "-normalized_signals.npz",
+                base_name + "-processed_signals.npz",
             ),
             signals=signals,
             signal_labels=signal_labels,
+            geodesics=geodesics
         )
 
 if __name__ == "__main__":
     conf = get_conf()
-    normalize_signals(conf)
+    normalize_all_signals(conf)
