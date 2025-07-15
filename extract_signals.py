@@ -24,7 +24,7 @@ def extract_signals(vol, skels, anisotropy, method: str):
         all_skel_vertices,
         method=method,
         bounds_error=False,
-        fill_value=-1.0,
+        fill_value=0.0,
     )
     assert np.all(signals >= 0), "Signals must be non-negative"
     # [ [signal for vertex in skel] for skel in skels ]
