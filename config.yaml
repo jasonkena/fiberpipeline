@@ -31,6 +31,8 @@ cell_segmentation:
 
 skeletonize_fibers:
   num_cpus: 16
+  manual_z_scale: 0.33
+  percentile_fit: [0.1, 0.9]
   num_centerline_points: 1000
   spline_smoothing: null
 

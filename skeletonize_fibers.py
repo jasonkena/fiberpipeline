@@ -9,11 +9,15 @@ from joblib import Parallel, delayed
 from scipy.interpolate import splprep, splev, interp1d
 from sklearn.decomposition import PCA
 from cloudvolume import Skeleton
-from typing import Optional
+from typing import Optional, List
 
 
 def fit_cylinder_spline_pca(
-    points, spline_smoothing: Optional[float] = None, npoints_geodesic: int = 1000
+    points,
+    manual_z_scale: float = 1.0,
+    percentile_fit: List[float] = [0.0, 1.0],
+    spline_smoothing: Optional[float] = None,
+    npoints_geodesic: int = 1000,
 ):
     """
     Fit a spline to a deformed cylindrical point cloud using PCA coordinate system.
@@ -23,6 +27,8 @@ def fit_cylinder_spline_pca(
     -----------
     points : array-like, shape (N, 3)
         Input point cloud coordinates
+    percentile_fit : List[float]
+        Percentiles to use for fitting the spline, e.g., [0.1, 0.9]
     spline_smoothing : Optional[float]
         Smoothing parameter for spline fitting (0 = interpolation)
     npoints_geodesic : int
@@ -34,8 +40,10 @@ def fit_cylinder_spline_pca(
         Function to evaluate the fitted spline at given [0,1] arc length parameters
         total_length : float
     """
+    assert len(percentile_fit) == 2, "percentile_fit must contain exactly two values"
 
     # Step 0: Normalize points to unit sphere to allow spline_smoothing to take sane values
+    points = points * np.array([manual_z_scale, 1.0, 1.0])
     center = np.mean(points, axis=0)
     radius = np.max(np.linalg.norm(points - center, axis=1))
     points = (points - center) / radius
@@ -58,6 +66,14 @@ def fit_cylinder_spline_pca(
 
     # Normalize parameter to [0, 1]
     t_normalized = (t_sorted - t_sorted.min()) / (t_sorted.max() - t_sorted.min())
+
+    used_to_fit = np.logical_and(
+        t_normalized >= percentile_fit[0],
+        t_normalized <= percentile_fit[1],
+    )
+
+    points_pca_sorted = points_pca_sorted[used_to_fit]
+    t_normalized = t_normalized[used_to_fit]
 
     # Step 3: Fit spline in PCA coordinates using normalized parameter
     tck, u = splprep(
@@ -114,6 +130,7 @@ def fit_cylinder_spline_pca(
         points_xyz = pca.inverse_transform(spline_pca)
         # Rescale to original space
         points_xyz = points_xyz * radius + center
+        points_xyz = points_xyz * np.array([1 / manual_z_scale, 1.0, 1.0])
 
         return points_xyz
 
@@ -128,7 +145,13 @@ def points_to_skeleton(points, segid: Optional[int] = None):
 
 
 def skeletonize_chunk(
-    vol, bbox_row, spline_smoothing, num_centerline_points, anisotropy
+    vol,
+    bbox_row,
+    manual_z_scale,
+    percentile_fit,
+    spline_smoothing,
+    num_centerline_points,
+    anisotropy,
 ):
     vol = vol[
         bbox_row[1] : bbox_row[2] + 1,
@@ -142,6 +165,8 @@ def skeletonize_chunk(
 
     spline, total_length = fit_cylinder_spline_pca(
         points,
+        manual_z_scale=manual_z_scale,
+        percentile_fit=percentile_fit,
         spline_smoothing=spline_smoothing,
     )
     centerline = spline(np.linspace(0, 1, num_centerline_points))
@@ -171,6 +196,8 @@ def generate_fiber_skeletons(conf, n_jobs=-1):
                     delayed(skeletonize_chunk)(
                         seg,
                         bbox[i],
+                        conf.skeletonize_fibers.manual_z_scale,
+                        conf.skeletonize_fibers.percentile_fit,
                         conf.skeletonize_fibers.spline_smoothing,
                         conf.skeletonize_fibers.num_centerline_points,
                         conf.anisotropy,
