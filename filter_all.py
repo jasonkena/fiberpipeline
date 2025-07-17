@@ -20,12 +20,13 @@ with warnings.catch_warnings():
 
 
 
-def filter_by_length(conf, signals, geodesics, skels):
+def filter_by_length(conf, signals, geodesics, skels, skel_ids):
     mask = [False if g[-1] - g[0] >= conf.filter_all.thres_length else True for g in geodesics]
     signals = np.delete(signals, mask, axis=1)
     geodesics = np.delete(geodesics, mask, axis=0)
     skels = np.delete(skels, mask, axis=0)
-    return signals, geodesics, skels
+    skel_ids = np.delete(skel_ids, mask, axis=0)
+    return signals, geodesics, skels, skel_ids
 
 
 
@@ -35,32 +36,32 @@ def skel_to_dist_mean(skel):
     dists = list(map(lambda x: np.linalg.norm(np.cross(p1-p0,x-p0)/np.linalg.norm(p1-p0)), skel.vertices))
     return np.mean(dists)
 
-def filter_by_shape(conf, signals, geodesics, skels):
-    # mask = []
-    # for skel in skels:
-    #     p0, p1 = skel.vertices[0], skel.vertices[-1]
-    #     dists = list(map(lambda x: np.linalg.norm(np.cross(p1-p0,x-p0)/np.linalg.norm(p1-p0)), skel.vertices))
-    #     mask.append(np.mean(dists) >= conf.filter_all.thres_shape)
-    # signals = np.delete(signals, mask, axis=1)
-    # geodesics = np.delete(geodesics, mask, axis=0)
-    # skels = np.delete(skels, mask, axis=0)
-    # return signals, geodesics, skels
-
+def filter_by_shape(conf, signals, geodesics, skels, skel_ids):
     with Pool(conf.num_cpus) as p:
         means = list(p.map(skel_to_dist_mean, skels))
     mask = [False if m < (g[-1] - g[0]) * conf.filter_all.thres_shape else True for m, g in zip(means, geodesics)]
     signals = np.delete(signals, mask, axis=1)
     geodesics = np.delete(geodesics, mask, axis=0)
     skels = np.delete(skels, mask, axis=0)
-    return signals, geodesics, skels
+    skel_ids = np.delete(skel_ids, mask, axis=0)
+    return signals, geodesics, skels, skel_ids
 
 
-def filter_by_cell(conf, signals, geodesics, skels):
-    mask = [False if np.count_nonzero(signals[5, idx]) > conf.filter_all.thres_cell * len(signals[5, idx]) else True for idx in range(signals.shape[1])]
+def filter_by_cell(conf, signals, geodesics, skels, skel_ids, fiber_seg, cell_seg):
+    # mask = [False if np.count_nonzero(signals[5, idx]) > conf.filter_all.thres_cell * len(signals[5, idx]) else True for idx in range(signals.shape[1])]
+    # signals = np.delete(signals, mask, axis=1)
+    # geodesics = np.delete(geodesics, mask, axis=0)
+    # skels = np.delete(skels, mask, axis=0)
+    # return signals, geodesics, skels
+    cell_seg = np.clip(cell_seg, 0, 1).astype(np.uint8)
+    allow_list, counts = np.unique(fiber_seg * cell_seg, return_counts=True)
+    allow_list = np.array([idx for idx, count in zip(allow_list, counts) if count > 300])
+    mask = [False if idx in allow_list else True for idx in skel_ids]
     signals = np.delete(signals, mask, axis=1)
     geodesics = np.delete(geodesics, mask, axis=0)
     skels = np.delete(skels, mask, axis=0)
-    return signals, geodesics, skels
+    skel_ids = np.delete(skel_ids, mask, axis=0)
+    return signals, geodesics, skels, skel_ids
 
 
 
@@ -78,15 +79,13 @@ if __name__ == '__main__':
         signals = np.load(os.path.join(output_path, basename + '-normalized_signals.npz'), allow_pickle=True)
         signals, signal_labels, geodesics = signals['signals'], signals['signal_labels'], signals['geodesics']
         skels = np.load(os.path.join(output_path, basename + '-fiber_skel.npz'), allow_pickle=True)
-        skels = skels['skels']
+        skels, skel_ids = skels['skels'], skels['skel_ids']
+        fiber_seg = readvol(os.path.join(output_path, basename + '-fiber_seg.h5'))
+        cell_seg = readvol(os.path.join(output_path, basename + '-cell_seg.h5'))
 
-        print(len(skels))
-        signals, geodesics, skels = filter_by_length(conf, signals, geodesics, skels)
-        print(len(skels))
-        signals, geodesics, skels = filter_by_shape(conf, signals, geodesics, skels)
-        print(len(skels))
-        signals, geodesics, skels = filter_by_cell(conf, signals, geodesics, skels)
-        print(len(skels))
+        signals, geodesics, skels, skel_ids = filter_by_length(conf, signals, geodesics, skels, skel_ids)
+        signals, geodesics, skels, skel_ids = filter_by_shape(conf, signals, geodesics, skels, skel_ids)
+        signals, geodesics, skels, skel_ids = filter_by_cell(conf, signals, geodesics, skels, skel_ids, fiber_seg, cell_seg)
 
         np.savez(
             os.path.join(
@@ -103,5 +102,6 @@ if __name__ == '__main__':
                 conf.output_path,
                 basename + "-filtered_fiber_skel.npz",
             ),
-            skels=skels
+            skels=skels,
+            skel_ids=skel_ids
         )

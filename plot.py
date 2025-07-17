@@ -140,6 +140,17 @@ if __name__ == "__main__":
             fiber_skels,
         )
         layers["fiber_seg"] = cv
+        
+        cv = to_precomputed(
+            cell_seg,
+            os.path.join(tmpdir, "cell_seg"),
+            layer_type="segmentation",
+            anisotropy=conf.anisotropy,
+            chunk_size=conf.precomputed.chunk_size,
+            downsample_factors=conf.precomputed.downsample_factors,
+            n_jobs=conf.precomputed.jobs,
+        )
+        layers["cell_seg"] = cv
 
         # cv = to_precomputed(
         #     cell_seg,
