@@ -33,7 +33,7 @@ def extract_signals(vol, skels, anisotropy, method: str):
 
 
 def generate_signals(conf):
-    files = sorted(glob.glob(os.path.join(conf.output_path, "*fiber_skel.npz")))
+    files = sorted(glob.glob(os.path.join(conf.output_path, "*-fiber_skel.npz")))
     for file in tqdm(files, desc="Processing files"):
         skels = np.load(file, allow_pickle=True)["skels"].tolist()
         base_name = os.path.basename(file).replace("-fiber_skel.npz", "")
@@ -56,7 +56,7 @@ def generate_signals(conf):
             )
         del im_vol
         fiber_seg = h5py.File(
-            os.path.join(conf.output_path, base_name + "-masked_fiber_seg.h5"),
+            os.path.join(conf.output_path, base_name + "-fiber_seg.h5"),
         )
         assert (
             len(fiber_seg.keys()) == 1

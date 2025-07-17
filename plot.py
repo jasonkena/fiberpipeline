@@ -101,7 +101,7 @@ if __name__ == "__main__":
         imageio.volread(os.path.join(conf.dataset_path, files[index]))
     )
     fiber_seg = h5py.File(
-        os.path.join(conf.output_path, files[index].replace(".tif", "-masked_fiber_seg.h5")),
+        os.path.join(conf.output_path, files[index].replace(".tif", "-fiber_seg.h5")),
     )
     assert (
         len(fiber_seg.keys()) == 1
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     fiber_seg = fiber_seg[list(fiber_seg.keys())[0]][:]
 
     fiber_skels = np.load(
-        os.path.join(conf.output_path, files[index].replace(".tif", "-fiber_skel.npz")),
+        os.path.join(conf.output_path, files[index].replace(".tif", "-filtered_fiber_skel.npz")),
         allow_pickle=True,
     )["skels"].tolist()
 
@@ -151,19 +151,19 @@ if __name__ == "__main__":
         #     n_jobs=conf.precomputed.jobs,
         # )
         # layers["cell_seg"] = cv
-        #
-        # for c in range(im_vol.shape[0]):
-        #     output_layer = os.path.join(tmpdir, f"im_{c}")
-        #
-        #     cv = to_precomputed(
-        #         im_vol[c],
-        #         output_layer,
-        #         layer_type="image",
-        #         anisotropy=conf.anisotropy,
-        #         chunk_size=conf.precomputed.chunk_size,
-        #         n_jobs=conf.precomputed.jobs,
-        #     )
-        #     layers[f"im_{c}"] = cv
+        
+        for c in [0, 2]: # range(im_vol.shape[0]):
+            output_layer = os.path.join(tmpdir, f"im_{c}")
+        
+            cv = to_precomputed(
+                im_vol[c],
+                output_layer,
+                layer_type="image",
+                anisotropy=conf.anisotropy,
+                chunk_size=conf.precomputed.chunk_size,
+                n_jobs=conf.precomputed.jobs,
+            )
+            layers[f"im_{c}"] = cv
 
         viewer = plot(layers)
         input("Press Enter to exit...")

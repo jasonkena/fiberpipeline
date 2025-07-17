@@ -6,21 +6,14 @@ import matplotlib.pyplot as plt
 from nicety.conf import get_conf
 
 def plot_signals(conf):
-    files = sorted(glob.glob(os.path.join(conf.output_path, "*-processed_signals.npz")))
+    files = sorted(glob.glob(os.path.join(conf.output_path, "*-filtered_signals.npz")))
     for file in files:
         print(f"Processing {file}")
         signals = np.load(file, allow_pickle=True)
         signals, signal_labels, geodesics = signals["signals"], signals["signal_labels"], signals['geodesics']
         skels = np.load(
-            file.replace("processed_signals.npz", "fiber_skel.npz"), allow_pickle=True
+            file.replace("filtered_signals", "filtered_fiber_skel"), allow_pickle=True
         )["skels"].tolist()
-
-        thres = 250
-        mask = [True if g[-1] - g[0] < thres else False for g in geodesics]
-
-        signals = np.delete(signals, mask, axis=1)
-        geodesics = np.delete(geodesics, mask, axis=0)
-        skels = np.delete(skels, mask, axis=0)
 
         for i, signal_label in enumerate(signal_labels):
             if not "im" in signal_label:

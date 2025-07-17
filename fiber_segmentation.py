@@ -79,7 +79,6 @@ def pytc_main(pytc_yaml_path, pytc_checkpoint_path):
 
 def generate_affinities(conf):
     dataset_path = conf.dataset_path
-    fiber_conf = conf.fiber_segmentation
 
     os.makedirs(conf.output_path, exist_ok=True)
 
@@ -90,25 +89,25 @@ def generate_affinities(conf):
             img = preprocess_vol(imageio.volread(file))
             img = clahe_parallel(
                 img[1],  # fiber channel
-                tile_size=fiber_conf.clahe.tile_size,
-                clip_limit=fiber_conf.clahe.clip_limit,
+                tile_size=conf.fiber_segmentation.clahe.tile_size,
+                clip_limit=conf.fiber_segmentation.clahe.clip_limit,
             )  # Apply CLAHE to the first channel
             # save to tmpdir
             imageio.volwrite(os.path.join(tmpdir, "inference.tif"), img)
 
-            pytc_yaml = get_conf([fiber_conf.base_yaml, fiber_conf.bcs_yaml])
-            pytc_yaml.SYSTEM.NUM_GPUS = fiber_conf.num_gpus
-            pytc_yaml.SYSTEM.NUM_CPUS = fiber_conf.num_cpus
+            pytc_yaml = get_conf([conf.fiber_segmentation.base_yaml, conf.fiber_segmentation.bcs_yaml])
+            pytc_yaml.SYSTEM.NUM_GPUS = conf.num_gpus
+            pytc_yaml.SYSTEM.NUM_CPUS = conf.num_cpus
             pytc_yaml.INFERENCE.INPUT_PATH = tmpdir
             pytc_yaml.INFERENCE.IMAGE_NAME = "inference.tif"
             pytc_yaml.INFERENCE.OUTPUT_PATH = tmpdir
             pytc_yaml.INFERENCE.OUTPUT_NAME = "affinities.h5"
-            pytc_yaml.INFERENCE.SAMPLES_PER_BATCH = fiber_conf.batch_size
+            pytc_yaml.INFERENCE.SAMPLES_PER_BATCH = conf.fiber_segmentation.batch_size
             pytc_yaml = dotdict_to_dict(pytc_yaml)
 
             pytc_yaml_path = os.path.join(tmpdir, "pytc.yaml")
             OmegaConf.save(pytc_yaml, pytc_yaml_path)
-            pytc_main(pytc_yaml_path, fiber_conf.checkpoint)
+            pytc_main(pytc_yaml_path, conf.fiber_segmentation.checkpoint)
 
             os.rename(
                 os.path.join(tmpdir, "affinities.h5"),

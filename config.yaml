@@ -2,10 +2,10 @@ dataset_path: "/projects/weilab/dataset/barcode/validation"
 output_path: "outputs"
 anisotropy: [40, 16, 16]
 
+num_cpus: 12
+num_gpus: 1
 
 fiber_segmentation:
-  num_gpus: 1
-  num_cpus: 16
   batch_size: 64
 
   checkpoint: /home/linok/skel3d/outputs/checkpoints/01-tiled_clahe/checkpoint_100000.pth.tar
@@ -30,11 +30,15 @@ cell_segmentation:
   visualize: true
 
 skeletonize_fibers:
-  num_cpus: 16
   manual_z_scale: 0.33
   percentile_fit: [0.1, 0.9]
   num_centerline_points: 1000
   spline_smoothing: null
+
+filter_all:
+ thres_length: 600
+ thres_shape: 0.1
+ thres_cell: 0.5
 
 precomputed:
   jobs: 64
