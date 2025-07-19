@@ -141,17 +141,6 @@ if __name__ == "__main__":
         )
         layers["fiber_seg"] = cv
         
-        cv = to_precomputed(
-            cell_seg,
-            os.path.join(tmpdir, "cell_seg"),
-            layer_type="segmentation",
-            anisotropy=conf.anisotropy,
-            chunk_size=conf.precomputed.chunk_size,
-            downsample_factors=conf.precomputed.downsample_factors,
-            n_jobs=conf.precomputed.jobs,
-        )
-        layers["cell_seg"] = cv
-
         # cv = to_precomputed(
         #     cell_seg,
         #     os.path.join(tmpdir, "cell_seg"),
@@ -162,19 +151,19 @@ if __name__ == "__main__":
         #     n_jobs=conf.precomputed.jobs,
         # )
         # layers["cell_seg"] = cv
-        
-        for c in [0, 2]: # range(im_vol.shape[0]):
-            output_layer = os.path.join(tmpdir, f"im_{c}")
-        
-            cv = to_precomputed(
-                im_vol[c],
-                output_layer,
-                layer_type="image",
-                anisotropy=conf.anisotropy,
-                chunk_size=conf.precomputed.chunk_size,
-                n_jobs=conf.precomputed.jobs,
-            )
-            layers[f"im_{c}"] = cv
+        #  
+        # for c in range(im_vol.shape[0]):
+        #     output_layer = os.path.join(tmpdir, f"im_{c}")
+        # 
+        #     cv = to_precomputed(
+        #         im_vol[c],
+        #         output_layer,
+        #         layer_type="image",
+        #         anisotropy=conf.anisotropy,
+        #         chunk_size=conf.precomputed.chunk_size,
+        #         n_jobs=conf.precomputed.jobs,
+        #     )
+        #     layers[f"im_{c}"] = cv
 
         viewer = plot(layers)
         input("Press Enter to exit...")
