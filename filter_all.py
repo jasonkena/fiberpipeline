@@ -56,7 +56,7 @@ def cubeness_metric(side_lengths):
 def filter_by_ratio(conf, signals, geodesics, skels, skel_ids):
     bbox_dims = list(map(lambda skel: np.max(skel.vertices, axis=0) - np.min(skel.vertices, axis=0), skels))
     with Pool(conf.num_cpus) as p:
-        mask = [False if cubeness > conf.filter_all.thres_ratio else True for cubeness in list(p.map(cubeness_metric, bbox_dims))]
+        mask = [False if cubeness < conf.filter_all.thres_ratio else True for cubeness in list(p.map(cubeness_metric, bbox_dims))]
     signals = np.delete(signals, mask, axis=1)
     geodesics = np.delete(geodesics, mask, axis=0)
     skels = np.delete(skels, mask, axis=0)
