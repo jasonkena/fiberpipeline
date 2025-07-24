@@ -11,6 +11,7 @@ from utils import preprocess_vol
 
 from scipy.interpolate import interpn
 
+
 def extract_signals(vol, skels, anisotropy, method: str):
     assert vol.ndim == 3, "Volume must be 3D"
     skel_lens = np.array([skel.vertices.shape[0] for skel in skels])
@@ -90,7 +91,7 @@ def generate_signals(conf):
         )
         signal_labels.append("cell_seg")
         del cell_seg
-        
+
         np.savez(
             os.path.join(
                 conf.output_path,

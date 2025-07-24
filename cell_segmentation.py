@@ -16,7 +16,9 @@ from tqdm import tqdm
 
 def segment(vol, model_type):
     predictor, segmenter = get_predictor_and_segmenter(model_type)
-    seg = automatic_instance_segmentation(predictor, segmenter, input_path=vol, verbose=False)
+    seg = automatic_instance_segmentation(
+        predictor, segmenter, input_path=vol, verbose=False
+    )
     return seg
 
 

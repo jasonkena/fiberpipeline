@@ -183,7 +183,7 @@ if __name__ == "__main__":
             n_jobs=conf.precomputed.jobs,
         )
         layers["cell_seg"] = cv
-        
+
         for c in range(im_vol.shape[0]):
             output_layer = os.path.join(tmpdir, f"im_{c}")
 

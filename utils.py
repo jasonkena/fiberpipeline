@@ -10,5 +10,6 @@ def preprocess_vol(vol):
 
     return vol
 
+
 def get_basename(path):
-    return '-'.join(os.path.basename(path).split('-')[:-1])
+    return "-".join(os.path.basename(path).split("-")[:-1])

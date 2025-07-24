@@ -95,7 +95,9 @@ def generate_affinities(conf):
             # save to tmpdir
             imageio.volwrite(os.path.join(tmpdir, "inference.tif"), img)
 
-            pytc_yaml = get_conf([conf.fiber_segmentation.base_yaml, conf.fiber_segmentation.bcs_yaml])
+            pytc_yaml = get_conf(
+                [conf.fiber_segmentation.base_yaml, conf.fiber_segmentation.bcs_yaml]
+            )
             pytc_yaml.SYSTEM.NUM_GPUS = conf.num_gpus
             pytc_yaml.SYSTEM.NUM_CPUS = conf.num_cpus
             pytc_yaml.INFERENCE.INPUT_PATH = tmpdir
