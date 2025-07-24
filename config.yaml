@@ -1,6 +1,6 @@
-dataset_path: "/projects/weilab/dataset/barcode/validation"
+dataset_path: "/projects/weilab/dataset/barcode/LZ58"
 output_path: "outputs"
-anisotropy: [40, 16, 16]
+anisotropy: [40, 16.3, 16.3]
 
 num_cpus: 12
 num_gpus: 1
@@ -50,3 +50,6 @@ precomputed:
     - [2, 2, 2]
   mesh_mip: 0
   mesh_merge_magnitude: 3
+
+napari:
+  mip: 0
