@@ -151,6 +151,7 @@ def skeletonize_chunk(
     percentile_fit,
     spline_smoothing,
     num_centerline_points,
+    extrapolate,
     anisotropy,
 ):
     vol = vol[
@@ -169,7 +170,9 @@ def skeletonize_chunk(
         percentile_fit=percentile_fit,
         spline_smoothing=spline_smoothing,
     )
-    centerline = spline(np.linspace(-0.2, 1.2, num_centerline_points))
+    centerline = spline(
+        np.linspace(extrapolate[0], extrapolate[1], num_centerline_points)
+    )
     centerline[:, 0] += bbox_row[1] * anisotropy[0]
     centerline[:, 1] += bbox_row[3] * anisotropy[1]
     centerline[:, 2] += bbox_row[5] * anisotropy[2]
@@ -198,6 +201,7 @@ def generate_fiber_skeletons(conf, n_jobs=-1):
                         conf.skeletonize_fibers.percentile_fit,
                         conf.skeletonize_fibers.spline_smoothing,
                         conf.skeletonize_fibers.num_centerline_points,
+                        conf.skeletonize_fibers.extrapolate,
                         conf.anisotropy,
                     )
                     for i in range(bbox.shape[0])

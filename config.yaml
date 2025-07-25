@@ -34,6 +34,13 @@ skeletonize_fibers:
   percentile_fit: [0.1, 0.9]
   num_centerline_points: 1000
   spline_smoothing: null
+  extrapolate: [-0.2, 1.2]
+
+normalize_signals:
+  gaussian_filter_ratio: 0.01 # for cropping
+  midpoint_range: [0.4, 0.6] # for determining midpoint
+
+#   tail_threshold: 0.1
 
 filter_all:
  thres_length: 600

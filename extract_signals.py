@@ -38,22 +38,18 @@ def generate_signals(conf):
     for file in tqdm(files, desc="Processing files"):
         skels = np.load(file, allow_pickle=True)["skels"].tolist()
         base_name = os.path.basename(file).replace("-fiber_skel.npz", "")
-        signal_labels = []
-        signals = []
+        signals = {}
 
         im_vol = preprocess_vol(
             imageio.volread(os.path.join(conf.dataset_path, base_name + ".tif"))
         )
         assert im_vol.ndim == 4
         for i in range(im_vol.shape[0]):
-            signal_labels.append(f"im_{i}")
-            signals.append(
-                extract_signals(
-                    im_vol[i],
-                    skels,
-                    conf.anisotropy,
-                    method="linear",
-                )
+            signals[f"im_{i}"] = extract_signals(
+                im_vol[i],
+                skels,
+                conf.anisotropy,
+                method="linear",
             )
         del im_vol
         fiber_seg = h5py.File(
@@ -63,15 +59,12 @@ def generate_signals(conf):
             len(fiber_seg.keys()) == 1
         ), "Expected only one key in the fiber segmentation file"
         fiber_seg = fiber_seg[list(fiber_seg.keys())[0]][:]
-        signals.append(
-            extract_signals(
-                fiber_seg,
-                skels,
-                conf.anisotropy,
-                method="nearest",
-            )
+        signals["fiber_seg"] = extract_signals(
+            fiber_seg,
+            skels,
+            conf.anisotropy,
+            method="nearest",
         )
-        signal_labels.append("fiber_seg")
         del fiber_seg
 
         cell_seg = h5py.File(
@@ -81,15 +74,12 @@ def generate_signals(conf):
             len(cell_seg.keys()) == 1
         ), "Expected only one key in the cell segmentation file"
         cell_seg = cell_seg[list(cell_seg.keys())[0]][:]
-        signals.append(
-            extract_signals(
-                cell_seg,
-                skels,
-                conf.anisotropy,
-                method="nearest",
-            )
+        signals["cell_seg"] = extract_signals(
+            cell_seg,
+            skels,
+            conf.anisotropy,
+            method="nearest",
         )
-        signal_labels.append("cell_seg")
         del cell_seg
 
         np.savez(
@@ -98,7 +88,6 @@ def generate_signals(conf):
                 base_name + "-signals.npz",
             ),
             signals=signals,
-            signal_labels=signal_labels,
         )
 
 
