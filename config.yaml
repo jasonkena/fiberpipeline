@@ -38,7 +38,7 @@ skeletonize_fibers:
 
 normalize_signals:
   gaussian_filter_ratio: 0.01 # for cropping
-  midpoint_range: [0.4, 0.6] # for determining midpoint
+  midpoint_range: [0.45, 0.55] # for determining midpoint
 
 #   tail_threshold: 0.1
 

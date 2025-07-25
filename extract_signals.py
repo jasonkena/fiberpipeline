@@ -12,7 +12,7 @@ from utils import preprocess_vol
 from scipy.interpolate import interpn
 
 
-def extract_signals(vol, skels, anisotropy, method: str):
+def extract_signals(vol, skels, anisotropy, method: str, dtype):
     assert vol.ndim == 3, "Volume must be 3D"
     skel_lens = np.array([skel.vertices.shape[0] for skel in skels])
     # already in isotropic space
@@ -27,6 +27,7 @@ def extract_signals(vol, skels, anisotropy, method: str):
         bounds_error=False,
         fill_value=0,
     )
+    signals = signals.astype(dtype)
     assert np.all(signals >= 0), "Signals must be non-negative"
     # [ [signal for vertex in skel] for skel in skels ]
     signals = np.split(signals, np.cumsum(skel_lens)[:-1])
@@ -50,6 +51,7 @@ def generate_signals(conf):
                 skels,
                 conf.anisotropy,
                 method="linear",
+                dtype=float,
             )
         del im_vol
         fiber_seg = h5py.File(
@@ -64,6 +66,7 @@ def generate_signals(conf):
             skels,
             conf.anisotropy,
             method="nearest",
+            dtype=fiber_seg.dtype,
         )
         del fiber_seg
 
@@ -79,6 +82,7 @@ def generate_signals(conf):
             skels,
             conf.anisotropy,
             method="nearest",
+            dtype=cell_seg.dtype,
         )
         del cell_seg
 
