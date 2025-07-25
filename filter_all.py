@@ -59,7 +59,7 @@ def filter_by_shape(conf, signals, geodesics, skels, skel_ids):
         False if np.max(d) < l * conf.filter_all.thres_shape_max else True
         for d, l in zip(dists, lens)
     ]
-    mask = [m1 & m2 for m1, m2 in zip(mask_mean, mask_max)]
+    mask = [m1 ^ m2 for m1, m2 in zip(mask_mean, mask_max)]
     signals = np.delete(signals, mask, axis=1)
     geodesics = np.delete(geodesics, mask, axis=0)
     skels = np.delete(skels, mask, axis=0)
