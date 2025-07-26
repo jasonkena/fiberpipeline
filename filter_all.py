@@ -44,6 +44,7 @@ def apply_filters(
     thres_length,
     thres_pca_ratio,
     thres_mean_soma,
+    one_per_soma,
 ):
     # apply filters
     length_filter = lengths > thres_length
@@ -58,27 +59,29 @@ def apply_filters(
     is_valid = length_filter & pca_filter & soma_filter & in_soma_filter
     print(f"Valid fibers: {np.sum(is_valid)}/{len(is_valid)} fibers")
 
-    cell_label_to_skel_id = defaultdict(list)
-    skel_id_to_idx = {}
+    if one_per_soma:
+        cell_label_to_skel_id = defaultdict(list)
+        skel_id_to_idx = {}
 
-    for i, (skel_id, cell_id, is_valid_fiber) in enumerate(
-        zip(skel_ids, cell_labels, is_valid)
-    ):
-        skel_id_to_idx[skel_id] = i
-        if is_valid_fiber:
-            cell_label_to_skel_id[cell_id].append(skel_id)
+        for i, (skel_id, cell_id, is_valid_fiber) in enumerate(
+            zip(skel_ids, cell_labels, is_valid)
+        ):
+            skel_id_to_idx[skel_id] = i
+            if is_valid_fiber:
+                cell_label_to_skel_id[cell_id].append(skel_id)
+        cell_label_to_skel_id = {
+            cell_id: max(ids, key=lambda x: lengths[skel_id_to_idx[x]])
+            for cell_id, ids in cell_label_to_skel_id.items()
+        }
+        final_valid = np.zeros(len(skel_ids), dtype=bool)
+        for x in cell_label_to_skel_id.values():
+            final_valid[skel_id_to_idx[x]] = True
 
-    cell_label_to_skel_id = {
-        cell_id: max(ids, key=lambda x: lengths[skel_id_to_idx[x]])
-        for cell_id, ids in cell_label_to_skel_id.items()
-    }
-    final_valid = np.zeros(len(skel_ids), dtype=bool)
-    for x in cell_label_to_skel_id.values():
-        final_valid[skel_id_to_idx[x]] = True
-
-    print(
-        f"Final valid fibers: {np.sum(final_valid)}/{np.sum(is_valid)} representatives picked"
-    )
+        print(
+            f"Final valid fibers: {np.sum(final_valid)}/{np.sum(is_valid)} representatives picked"
+        )
+    else:
+        final_valid = is_valid
 
     return final_valid
 
@@ -128,16 +131,6 @@ def filter_fibers(conf):
         mean_somas = np.array([x[2] for x in res])
         cell_labels = np.array([x[3] for x in res])
 
-        np.savez(
-            os.path.join(
-                conf.output_path,
-                basename + "-fiber_attributes.npz",
-            ),
-            lengths=lengths,
-            pca_ratios=pca_ratios,
-            mean_somas=mean_somas,
-            cell_labels=cell_labels,
-        )
         is_valid = apply_filters(
             skel_ids,
             lengths,
@@ -147,19 +140,26 @@ def filter_fibers(conf):
             conf.filter_all.thres_length,
             conf.filter_all.thres_pca_ratio,
             conf.filter_all.thres_mean_soma,
+            conf.filter_all.one_per_soma,
         )
 
         np.savez(
             os.path.join(
                 conf.output_path,
-                basename + "-filtered_signals.npz",
+                basename + "-final_signals.npz",
             ),
-            signals={
-                name: [x for i, x in enumerate(signals[name]) if is_valid[i]]
-                for name in signals
+            # ['im_0', 'im_1', 'im_2', 'im_3', 'fiber_seg', 'cell_seg', 'geodesic']
+            signals={name: np.array(signals[name]) for name in signals},
+            # list of [Nx3] arrays
+            skels=[np.array(skel) for skel in skels],
+            skel_ids=skel_ids,
+            criteria={
+                "lengths": lengths,
+                "pca_ratios": pca_ratios,
+                "mean_somas": mean_somas,
+                "cell_labels": cell_labels,
             },
-            skels=[np.array(skels[i]) for i in range(len(skel_ids)) if is_valid[i]],
-            skel_ids=skel_ids[is_valid],
+            is_valid=is_valid,
         )
 
 

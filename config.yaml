@@ -44,6 +44,7 @@ filter_all:
   thres_length: 600
   thres_pca_ratio: 0.1
   thres_mean_soma: 0.1
+  one_per_soma: true
 
 precomputed:
   jobs: 64

@@ -121,6 +121,7 @@ def get_midpoint(signal, midpoint_range):
 
 def get_geodesic(skel, center):
     dist = np.cumsum(np.linalg.norm(np.diff(skel, axis=0), axis=1))
+    dist = np.concatenate([[0], dist])
     dist -= dist[center]
 
     return dist
