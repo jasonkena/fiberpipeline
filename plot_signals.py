@@ -6,24 +6,19 @@ import matplotlib.pyplot as plt
 from nicety.conf import get_conf
 
 
-def geodesic(skel, center: bool):
-    dist = np.cumsum(np.linalg.norm(np.diff(skel.vertices, axis=0), axis=1))
-    dist = np.concatenate([[0], dist])
-    if center:
-        dist -= dist.mean()
-    return dist
-
-
 def plot_signals(conf):
-    files = sorted(glob.glob(os.path.join(conf.output_path, "*_signals.npz")))
+    files = sorted(glob.glob(os.path.join(conf.output_path, "*-filtered_signals.npz")))
     for file in files:
         print(f"Processing {file}")
         signals = np.load(file, allow_pickle=True)
-        signals, signal_labels = signals["signals"], signals["signal_labels"]
+        signals, signal_labels, geodesics = (
+            signals["signals"],
+            signals["signal_labels"],
+            signals["geodesics"],
+        )
         skels = np.load(
-            file.replace("_signals.npz", "_fiber_skel.npz"), allow_pickle=True
+            file.replace("filtered_signals", "filtered_fiber_skel"), allow_pickle=True
         )["skels"].tolist()
-        geodesics = [geodesic(skel, center=True) for skel in skels]
 
         for i, signal_label in enumerate(signal_labels):
             if not "im" in signal_label:
@@ -31,10 +26,8 @@ def plot_signals(conf):
                 continue
 
             # Plot each skeleton's geodesic vs signal (no individual labels)
-            for j, (geodesic_vals, signal_vals) in enumerate(
-                zip(geodesics, signals[i])
-            ):
-                plt.plot(geodesic_vals, signal_vals, alpha=0.3, linewidth=0.5)
+            for signal_vals, geodesic in zip(signals[i], geodesics):
+                plt.plot(geodesic, signal_vals, alpha=0.3, linewidth=0.5)
 
             plt.xlabel("Geodesic Distance")
             plt.ylabel("Signal Value")

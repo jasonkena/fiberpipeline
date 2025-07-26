@@ -14,6 +14,8 @@ from cloudvolume import CloudVolume
 import socketserver
 import threading
 from urllib.parse import urlparse
+import napari
+from napari import Viewer
 
 
 def get_free_port(ip: str) -> int:
@@ -46,7 +48,7 @@ def serve_cloudvolume_layers(ip: str, layers: Dict[str, CloudVolume]) -> DotDict
     return DotDict(threads)
 
 
-def plot(
+def plot_neuroglancer(
     layers: Dict[str, CloudVolume],
 ):
     ip = "localhost"
@@ -86,6 +88,25 @@ def plot(
     return viewer
 
 
+def plot_napari(layers: Dict[str, CloudVolume], mip):
+    """
+    Plot layers in napari.
+    """
+    viewer = Viewer()
+    for name, cv in layers.items():
+        assert cv.layer_type in ["image", "segmentation"]
+
+        _cv = CloudVolume(cv.layerpath, mip=mip)
+        vol = _cv[:].squeeze(-1)  # remove the last dimension
+        scale = _cv.scale["resolution"]
+        func = viewer.add_image if cv.layer_type == "image" else viewer.add_labels
+
+        func(vol, name=name, scale=scale)
+    napari.run()
+
+    return viewer
+
+
 if __name__ == "__main__":
     conf = get_conf()
 
@@ -96,12 +117,18 @@ if __name__ == "__main__":
     _, index = pick(files, title, indicator="=>")
     print(f"Selected file: {files[index]}")
 
+    # pick between napari and neuroglancer
+    options = ["neuroglancer", "napari"]
+    title = "Select the viewer to use"
+    viewer_choice, _ = pick(options, title, indicator="=>")
+    is_neuroglancer = viewer_choice == "neuroglancer"
+
     # C, Z, Y, X
     im_vol = preprocess_vol(
         imageio.volread(os.path.join(conf.dataset_path, files[index]))
     )
     fiber_seg = h5py.File(
-        os.path.join(conf.output_path, files[index].replace(".tif", "_fiber_seg.h5")),
+        os.path.join(conf.output_path, files[index].replace(".tif", "-fiber_seg.h5")),
     )
     assert (
         len(fiber_seg.keys()) == 1
@@ -109,12 +136,16 @@ if __name__ == "__main__":
     fiber_seg = fiber_seg[list(fiber_seg.keys())[0]][:]
 
     fiber_skels = np.load(
-        os.path.join(conf.output_path, files[index].replace(".tif", "_fiber_skel.npz")),
+        os.path.join(conf.output_path, files[index].replace(".tif", "-fiber_skel.npz")),
         allow_pickle=True,
     )["skels"].tolist()
+    # fiber_skels = np.load(
+    #     os.path.join(conf.output_path, files[index].replace(".tif", "-filtered_fiber_skel.npz")),
+    #     allow_pickle=True,
+    # )["skels"].tolist()
 
     cell_seg = h5py.File(
-        os.path.join(conf.output_path, files[index].replace(".tif", "_cell_seg.h5")),
+        os.path.join(conf.output_path, files[index].replace(".tif", "-cell_seg.h5")),
     )
     assert (
         len(cell_seg.keys()) == 1
@@ -135,35 +166,39 @@ if __name__ == "__main__":
             n_jobs=conf.precomputed.jobs,
             enable_skeletons=True,
         )
+
         write_skeletons(
             os.path.join(tmpdir, "fiber_seg"),
             fiber_skels,
         )
         layers["fiber_seg"] = cv
 
-        # cv = to_precomputed(
-        #     cell_seg,
-        #     os.path.join(tmpdir, "cell_seg"),
-        #     layer_type="segmentation",
-        #     anisotropy=conf.anisotropy,
-        #     chunk_size=conf.precomputed.chunk_size,
-        #     downsample_factors=conf.precomputed.downsample_factors,
-        #     n_jobs=conf.precomputed.jobs,
-        # )
-        # layers["cell_seg"] = cv
-        #
-        # for c in range(im_vol.shape[0]):
-        #     output_layer = os.path.join(tmpdir, f"im_{c}")
-        #
-        #     cv = to_precomputed(
-        #         im_vol[c],
-        #         output_layer,
-        #         layer_type="image",
-        #         anisotropy=conf.anisotropy,
-        #         chunk_size=conf.precomputed.chunk_size,
-        #         n_jobs=conf.precomputed.jobs,
-        #     )
-        #     layers[f"im_{c}"] = cv
+        cv = to_precomputed(
+            cell_seg,
+            os.path.join(tmpdir, "cell_seg"),
+            layer_type="segmentation",
+            anisotropy=conf.anisotropy,
+            chunk_size=conf.precomputed.chunk_size,
+            downsample_factors=conf.precomputed.downsample_factors,
+            n_jobs=conf.precomputed.jobs,
+        )
+        layers["cell_seg"] = cv
 
-        viewer = plot(layers)
+        for c in range(im_vol.shape[0]):
+            output_layer = os.path.join(tmpdir, f"im_{c}")
+
+            cv = to_precomputed(
+                im_vol[c],
+                output_layer,
+                layer_type="image",
+                anisotropy=conf.anisotropy,
+                chunk_size=conf.precomputed.chunk_size,
+                n_jobs=conf.precomputed.jobs,
+            )
+            layers[f"im_{c}"] = cv
+
+        if is_neuroglancer:
+            viewer = plot_neuroglancer(layers)
+        else:
+            viewer = plot_napari(layers, mip=conf.napari.mip)
         input("Press Enter to exit...")

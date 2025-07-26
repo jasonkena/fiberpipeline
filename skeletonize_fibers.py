@@ -151,6 +151,7 @@ def skeletonize_chunk(
     percentile_fit,
     spline_smoothing,
     num_centerline_points,
+    extrapolate,
     anisotropy,
 ):
     vol = vol[
@@ -169,25 +170,25 @@ def skeletonize_chunk(
         percentile_fit=percentile_fit,
         spline_smoothing=spline_smoothing,
     )
-    centerline = spline(np.linspace(0, 1, num_centerline_points))
+    centerline = spline(
+        np.linspace(extrapolate[0], extrapolate[1], num_centerline_points)
+    )
     centerline[:, 0] += bbox_row[1] * anisotropy[0]
     centerline[:, 1] += bbox_row[3] * anisotropy[1]
     centerline[:, 2] += bbox_row[5] * anisotropy[2]
 
     skel = points_to_skeleton(centerline, segid=bbox_row[0])
 
-    return skel
+    return bbox_row[0], skel
 
 
 def generate_fiber_skeletons(conf, n_jobs=-1):
-    files = sorted(glob.glob(os.path.join(conf.output_path, "*fiber_seg.h5")))
+    files = sorted(glob.glob(os.path.join(conf.output_path, "*-fiber_seg.h5")))
 
     for file in tqdm(files, desc="Processing files"):
         seg = h5py.File(file, "r")
         assert len(seg.keys()) == 1, "Only one key expected in segmentation file"
         seg = seg[list(seg.keys())[0]][:]
-        # [id, z_min, z_max, y_min, y_max, x_min, x_max]
-        # need to do z_min :  z_max + 1 to index
         bbox = compute_bbox_all(seg)
 
         skels = list(
@@ -200,6 +201,7 @@ def generate_fiber_skeletons(conf, n_jobs=-1):
                         conf.skeletonize_fibers.percentile_fit,
                         conf.skeletonize_fibers.spline_smoothing,
                         conf.skeletonize_fibers.num_centerline_points,
+                        conf.skeletonize_fibers.extrapolate,
                         conf.anisotropy,
                     )
                     for i in range(bbox.shape[0])
@@ -214,7 +216,8 @@ def generate_fiber_skeletons(conf, n_jobs=-1):
                 conf.output_path,
                 os.path.basename(file).replace("fiber_seg.h5", "fiber_skel.npz"),
             ),
-            skels=skels,
+            skel_ids=list(map(lambda x: x[0], skels)),
+            skels=list(map(lambda x: x[1], skels)),
         )
 
 

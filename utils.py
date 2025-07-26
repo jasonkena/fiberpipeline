@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 
@@ -8,3 +9,7 @@ def preprocess_vol(vol):
     vol = np.transpose(vol, (1, 0, 2, 3))
 
     return vol
+
+
+def get_basename(path):
+    return "-".join(os.path.basename(path).split("-")[:-1])
