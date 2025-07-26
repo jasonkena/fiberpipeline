@@ -40,13 +40,9 @@ normalize_signals:
   gaussian_filter_ratio: 0.01 # for cropping
   midpoint_range: [0.45, 0.55] # for determining midpoint
 
-#   tail_threshold: 0.1
-
 filter_all:
  thres_length: 600
- thres_shape: 0.1
- thres_cell: 0.5
- thres_ratio: 0.8
+ thres_pca: 0.1
 
 precomputed:
   jobs: 64

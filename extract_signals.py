@@ -28,7 +28,6 @@ def extract_signals(vol, skels, anisotropy, method: str, dtype):
         fill_value=0,
     )
     signals = signals.astype(dtype)
-
     assert np.all(signals >= 0), "Signals must be non-negative"
     # [ [signal for vertex in skel] for skel in skels ]
     signals = np.split(signals, np.cumsum(skel_lens)[:-1])

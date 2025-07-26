@@ -160,6 +160,7 @@ def normalize_all_signals(conf):
         skels = np.load(
             file.replace("-signals.npz", "-fiber_skel.npz"), allow_pickle=True
         )["skels"].tolist()
+        skel_ids = np.array([skel.id for skel in skels])
         skels = [skel.vertices for skel in skels]
         assert all([len(signals[x]) == len(skels) for x in signals])
 
@@ -193,6 +194,7 @@ def normalize_all_signals(conf):
             ),
             signals=signals,
             skels=skels,
+            skel_ids=skel_ids,
         )
 
 
