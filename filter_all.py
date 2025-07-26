@@ -11,6 +11,8 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 from sklearn.decomposition import PCA
 
+from collections import defaultdict
+
 
 def evaluate_fiber(signals, skel):
     # geodesic distance
@@ -33,6 +35,54 @@ def evaluate_fiber(signals, skel):
     return length, pca_ratio, mean_soma, cell_label
 
 
+def apply_filters(
+    skel_ids,
+    lengths,
+    pca_ratios,
+    mean_somas,
+    cell_labels,
+    thres_length,
+    thres_pca_ratio,
+    thres_mean_soma,
+):
+    # apply filters
+    length_filter = lengths > thres_length
+    print(f"Length filter: {np.sum(length_filter)}/{len(length_filter)} fibers")
+    pca_filter = pca_ratios > thres_pca_ratio
+    print(f"PCA filter: {np.sum(pca_filter)}/{len(pca_filter)} fibers")
+    soma_filter = mean_somas > thres_mean_soma
+    print(f"Mean soma filter: {np.sum(soma_filter)}/{len(soma_filter)} fibers")
+    in_soma_filter = cell_labels != 0
+    print(f"In soma filter: {np.sum(in_soma_filter)}/{len(in_soma_filter)} fibers")
+
+    is_valid = length_filter & pca_filter & soma_filter & in_soma_filter
+    print(f"Valid fibers: {np.sum(is_valid)}/{len(is_valid)} fibers")
+
+    cell_label_to_skel_id = defaultdict(list)
+    skel_id_to_idx = {}
+
+    for i, (skel_id, cell_id, is_valid_fiber) in enumerate(
+        zip(skel_ids, cell_labels, is_valid)
+    ):
+        skel_id_to_idx[skel_id] = i
+        if is_valid_fiber:
+            cell_label_to_skel_id[cell_id].append(skel_id)
+
+    cell_label_to_skel_id = {
+        cell_id: max(ids, key=lambda x: lengths[skel_id_to_idx[x]])
+        for cell_id, ids in cell_label_to_skel_id.items()
+    }
+    final_valid = np.zeros(len(skel_ids), dtype=bool)
+    for x in cell_label_to_skel_id.values():
+        final_valid[skel_id_to_idx[x]] = True
+
+    print(
+        f"Final valid fibers: {np.sum(final_valid)}/{np.sum(is_valid)} representatives picked"
+    )
+
+    return final_valid
+
+
 def filter_fibers(conf):
     output_path = conf.output_path
     extensions = [".npz", ".h5"]
@@ -45,8 +95,6 @@ def filter_fibers(conf):
             ]
         )
     )
-
-    diff_list = []
 
     for basename in (pbar := tqdm(basenames)):
         pbar.set_description(basename)
@@ -90,16 +138,29 @@ def filter_fibers(conf):
             mean_somas=mean_somas,
             cell_labels=cell_labels,
         )
+        is_valid = apply_filters(
+            skel_ids,
+            lengths,
+            pca_ratios,
+            mean_somas,
+            cell_labels,
+            conf.filter_all.thres_length,
+            conf.filter_all.thres_pca_ratio,
+            conf.filter_all.thres_mean_soma,
+        )
 
-        # np.savez(
-        #     os.path.join(
-        #         conf.output_path,
-        #         basename + "-filtered_fiber_skel.npz",
-        #     ),
-        #     skels=skels,
-        #     skel_ids=skel_ids,
-        # )
-        #
+        np.savez(
+            os.path.join(
+                conf.output_path,
+                basename + "-filtered_signals.npz",
+            ),
+            signals={
+                name: [x for i, x in enumerate(signals[name]) if is_valid[i]]
+                for name in signals
+            },
+            skels=[np.array(skels[i]) for i in range(len(skel_ids)) if is_valid[i]],
+            skel_ids=skel_ids[is_valid],
+        )
 
 
 if __name__ == "__main__":
