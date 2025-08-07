@@ -1,0 +1,81 @@
+dataset_path: "/projects/weilab/dataset/barcode/LZ58_test"
+output_path: "outputs"
+anisotropy: [40, 16.3, 16.3]
+to_um: 0.01
+
+num_cpus: 48
+num_gpus: 1
+
+fiber_segmentation_model:
+  dataset_path: "/projects/weilab/dataset/barcode/train"
+
+fiber_segmentation:
+  batch_size: 64
+
+  _path: fiberpipeline/segmentation/fiber_segmentation_model
+  checkpoint: ${fiber_segmentation._path}/checkpoints/checkpoint_100000.pth.tar
+  base_yaml: ${fiber_segmentation._path}/configs/base_config.yaml
+  bcs_yaml: ${fiber_segmentation._path}/configs/bcs_config.yaml
+
+  clahe:
+    tile_size: 8
+    clip_limit: 2.0
+
+  bcs:
+    thres1: 0.21290304093127832
+    thres2: 0.6229526243971144
+    thres3: 0
+    thres4: 0
+    thres5: 0
+    thres_small: 10
+
+
+cell_segmentation:
+  model_type: "vit_b_lm" # base (also t for tiny; l for large), light microscopy
+  visualize: true
+
+skeletonize_fibers:
+  manual_z_scale: 0.33
+  percentile_fit: [0.1, 0.9]
+  num_centerline_points: 1000
+  spline_smoothing: null
+  extrapolate: [-0.2, 1.2]
+
+normalize_signals:
+  gaussian_filter_ratio: 0.01 # for cropping
+  midpoint_range: [0.45, 0.55] # for determining midpoint
+  scale_range: [-0.2, 0.2] # if negative, scale left up, if positive, scale right up
+  num_trials: 100 # number of bayesian trials to find the best midpoint and scaling
+
+validate_fibers:
+  thres_length: 800
+  thres_pca_ratio: 0.0
+  thres_mean_soma: 0.0
+  one_per_soma: false
+
+stats:
+  length_thresh: [800, 2500]
+
+precomputed:
+  jobs: 64
+  chunk_size: [16, 64, 64]
+  downsample_factors:
+    - [1, 2, 2]
+    - [2, 2, 2]
+    - [2, 2, 2]
+  mesh_mip: 2
+  mesh_merge_magnitude: 3
+  im_shader: |
+    #uicontrol float brightness slider(min=-10, max=10, default=0, step=0.1)
+    #uicontrol invlerp normalized
+    #uicontrol vec3 color color
+    void main() {
+      float val = normalized();
+      float alpha = smoothstep(0.0, 1.0, val);
+      vec3 adjustedColor = color * exp(brightness);
+      emitRGBA(vec4(adjustedColor, alpha));
+    }
+
+napari:
+  # skel_downsample: 10
+  skel_downsample: 5

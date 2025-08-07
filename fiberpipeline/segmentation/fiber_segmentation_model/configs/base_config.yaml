@@ -1,0 +1,57 @@
+SYSTEM:
+  NUM_GPUS: 1
+  NUM_CPUS: 16
+MODEL:
+  ARCHITECTURE: unet_3d
+  BLOCK_TYPE: residual_se
+  INPUT_SIZE: [33, 97, 97]
+  OUTPUT_SIZE: [33, 97, 97]
+  NORM_MODE: gn
+  IN_PLANES: 1
+  MIXED_PRECESION: False
+  FILTERS: [32, 64, 96, 128, 160]
+  LABEL_EROSION: 1
+DATASET:
+  INPUT_PATH: /projects/weilab/dataset/barcode/train
+  IMAGE_NAME:
+  - '1/1-xri_raw-tiled_clahe.tif'
+  - '2/2-xri_raw-tiled_clahe.tif'
+  - '3/3-xri_raw-tiled_clahe.tif'
+  - '4_1/4_1-xri_raw-tiled_clahe.tif'
+  - '4_2/4_2-xri_raw-tiled_clahe.tif'
+  - '4_3/4_3-xri_raw-tiled_clahe.tif'
+  LABEL_NAME:
+  - '1/1-annotated_mask.tif'
+  - '2/2-annotated_mask.tif'
+  - '3/3-annotated_mask.tif'
+  - '4_1/4_1-annotated_mask.tif'
+  - '4_2/4_2-annotated_mask.tif'
+  - '4_3/4_3-annotated_mask.tif'
+  OUTPUT_PATH: outputs/checkpoints/01-tiled_clahe
+  PAD_SIZE: [16, 32, 32]
+  DATA_SCALE: [1.0, 1.0, 1.0]
+  REJECT_SAMPLING:
+    SIZE_THRES: 1000
+    P: 1.0
+  DISTRIBUTED: False
+SOLVER:
+  LR_SCHEDULER_NAME: WarmupCosineLR
+  BASE_LR: 0.02
+  ITERATION_STEP: 1
+  ITERATION_SAVE: 10000
+  ITERATION_TOTAL: 100000
+  SAMPLES_PER_BATCH: 2
+MONITOR:
+  ITERATION_NUM: [40, 400]
+INFERENCE:
+  INPUT_SIZE: [33, 97, 97]
+  OUTPUT_SIZE: [33, 97, 97]
+  INPUT_PATH: /projects/weilab/dataset/barcode/train
+  IMAGE_NAME: 0313/M4-DG-004_10_im.tif
+  OUTPUT_PATH: outputs
+  OUTPUT_NAME: 0313/M4-DG-004_10_im_pred.h5
+  PAD_SIZE: [16, 48, 48]
+  AUG_MODE: "mean"
+  AUG_NUM: None
+  STRIDE: [16, 48, 48]
+  SAMPLES_PER_BATCH: 48

@@ -1,0 +1,13 @@
+default:
+    just --list
+
+clahe:
+    @cd scripts
+    python clahe.py -c ../../config.yaml
+
+train_model:
+    python scripts/main.py --config-base configs/base_config.yaml --config-file configs/bcs_config.yaml
+
+everything:
+    just clahe
+    just train_model

@@ -1,0 +1,27 @@
+name: fiberpipeline
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - just=1.42.4
+  - tqdm=4.67.1
+  - h5py=3.14.0
+  - micro_sam=1.6.0
+  - napari=0.6.3
+  - napari-animation=0.0.9
+  - optuna=4.4.0
+  - scikit-image=0.25.2
+  - scikit-optimize=0.10.2
+  - pip:
+    - torch==2.6.0
+    - torchvision==0.21.0
+    - torchaudio==2.6.0
+    - cloud_volume==12.4.1
+    - fastremap==1.17.2
+    - igneous_pipeline==4.32.0
+    - neuroglancer==2.40.1
+    - pick==2.4.0
+    - optuna==4.4.0
+    - git+https://github.com/jasonkena/nicety
+    - git+https://github.com/jasonkena/pytorch_connectomics.git@barcode
+    - git+https://github.com/PytorchConnectomics/em_util
